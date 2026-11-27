@@ -29,6 +29,18 @@ node index.js
 3. Bot aktif. Sesi tersimpan di folder `auth_info` (jangan dibagikan ke siapa pun —
    isinya setara kunci login WhatsApp-mu).
 
+## Login dengan kode pairing (tanpa scan QR)
+
+```bash
+node index.js 6281234567890
+```
+
+Ganti nomornya dengan nomor WhatsApp yang akan jadi bot (format internasional,
+tanpa `+`). Terminal akan menampilkan kode 8 karakter. Di WhatsApp HP:
+**Setelan → Perangkat tertaut → Tautkan perangkat → "Tautkan dengan nomor
+telepon saja"**, lalu masukkan kode tersebut. Cara ini praktis kalau bot
+dijalankan di VPS dan QR di terminal sulit di-scan.
+
 ## Perintah
 
 Kirim perintah sebagai **balasan (reply)** ke media-nya, atau tulis perintah di

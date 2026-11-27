@@ -33,6 +33,12 @@ const PACK_NAME = 'Abuy Sticker'
 const AUTHOR = 'wa-sticker-audio-bot'
 const MAX_VIDEO_SECONDS = 6 // batas aman stiker animasi WhatsApp
 
+// Login alternatif pakai kode pairing (tanpa scan QR):
+//   node index.js 6281234567890     (atau: PHONE=6281234567890 node index.js)
+// Nomor = nomor WhatsApp yang akan jadi bot, format internasional tanpa "+".
+const PHONE = (process.env.PHONE || process.argv[2] || '').replace(/\D/g, '')
+let pairingRequested = false
+
 // ---------- helper ffmpeg ----------
 
 async function withTempDir(fn) {
@@ -100,6 +106,21 @@ async function start() {
   })
 
   sock.ev.on('creds.update', saveCreds)
+
+  // Minta kode pairing sekali saja, kalau login pakai nomor diminta
+  if (PHONE && !sock.authState.creds.registered && !pairingRequested) {
+    pairingRequested = true
+    setTimeout(async () => {
+      try {
+        const code = await sock.requestPairingCode(PHONE)
+        console.log(`\nKODE PAIRING: ${code}`)
+        console.log('Di WhatsApp HP: Setelan > Perangkat tertaut > Tautkan perangkat >')
+        console.log('"Tautkan dengan nomor telepon saja" > masukkan kode di atas.\n')
+      } catch (e) {
+        console.error('Gagal meminta kode pairing:', e.message)
+      }
+    }, 3000)
+  }
 
   sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
     if (qr) {
