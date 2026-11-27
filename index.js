@@ -14,6 +14,7 @@ import makeWASocket, {
   DisconnectReason,
   downloadMediaMessage,
   fetchLatestBaileysVersion,
+  Browsers,
 } from '@whiskeysockets/baileys'
 import { Sticker, StickerTypes } from 'wa-sticker-formatter'
 import pino from 'pino'
@@ -102,7 +103,8 @@ async function start() {
     auth: state,
     logger,
     printQRInTerminal: false,
-    browser: ['wa-sticker-audio-bot', 'Chrome', '1.0.0'],
+    // Identitas browser standar — nama kustom ditolak WhatsApp saat login kode pairing
+    browser: Browsers.ubuntu('Chrome'),
   })
 
   sock.ev.on('creds.update', saveCreds)
