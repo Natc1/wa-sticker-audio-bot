@@ -200,7 +200,10 @@ function getTargetMessage(msg) {
 }
 
 async function handle(sock, msg) {
-  if (!msg.message || msg.key.fromMe) return
+  // Pesan dari nomor sendiri (fromMe) TETAP diproses: bot ini tertaut ke nomor
+  // pemiliknya, jadi perintah justru datang dari HP pemilik. Aman dari loop
+  // karena bot hanya bereaksi ke teks berawalan "." dan balasannya bukan perintah.
+  if (!msg.message) return
   const jid = msg.key.remoteJid
   const text = getText(msg).trim()
   if (!text.startsWith(PREFIX)) return
