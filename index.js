@@ -18,6 +18,7 @@ import makeWASocket, {
 import { Sticker, StickerTypes } from 'wa-sticker-formatter'
 import pino from 'pino'
 import QRCode from 'qrcode'
+import qrTerminal from 'qrcode-terminal'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import fs from 'node:fs/promises'
@@ -102,7 +103,10 @@ async function start() {
 
   sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
     if (qr) {
-      // Simpan QR sebagai gambar agar bisa dikirim ke pemilik nomor untuk di-scan
+      // Tampilkan QR di terminal (untuk yang menjalankan langsung / via SSH)
+      console.log('Scan QR ini dengan WhatsApp (Perangkat tertaut):')
+      qrTerminal.generate(qr, { small: true })
+      // Simpan juga sebagai gambar, agar bisa dikirim ke pemilik nomor untuk di-scan
       QRCode.toFile('qr.png', qr, { width: 512, margin: 2 })
         .then(() => console.log('QR baru tersimpan di qr.png — siap di-scan (Perangkat tertaut)'))
         .catch((e) => console.error('Gagal membuat QR:', e.message))
