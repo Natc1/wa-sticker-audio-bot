@@ -107,40 +107,56 @@ async function start() {
 
   sock.ev.on('creds.update', saveCreds)
 
-  // Minta kode pairing sekali saja, kalau login pakai nomor diminta
-  if (PHONE && !sock.authState.creds.registered && !pairingRequested) {
-    pairingRequested = true
-    setTimeout(async () => {
-      try {
-        const code = await sock.requestPairingCode(PHONE)
-        console.log(`\nKODE PAIRING: ${code}`)
-        console.log('Di WhatsApp HP: Setelan > Perangkat tertaut > Tautkan perangkat >')
-        console.log('"Tautkan dengan nomor telepon saja" > masukkan kode di atas.\n')
-      } catch (e) {
-        console.error('Gagal meminta kode pairing:', e.message)
-      }
-    }, 3000)
-  }
-
-  sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
+  sock.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
     if (qr) {
-      // Tampilkan QR di terminal (untuk yang menjalankan langsung / via SSH)
-      console.log('Scan QR ini dengan WhatsApp (Perangkat tertaut):')
-      qrTerminal.generate(qr, { small: true })
+      if (PHONE && !sock.authState.creds.registered) {
+        // Mode kode pairing: minta kode SETELAH handshake pertama (event QR
+        // pertama) supaya kode terikat ke sesi yang benar-benar hidup.
+        if (!pairingRequested) {
+          pairingRequested = true
+          try {
+            const code = await sock.requestPairingCode(PHONE)
+            const pretty = code?.match(/.{1,4}/g)?.join('-') ?? code
+            console.log(`\nKODE PAIRING: ${pretty}`)
+            console.log('SEGERA masukkan di WhatsApp HP — kode cepat kedaluwarsa:')
+            console.log('Setelan > Perangkat tertaut > Tautkan perangkat > "Tautkan dengan nomor telepon saja"\n')
+          } catch (e) {
+            console.error('Gagal meminta kode pairing:', e.message)
+          }
+        }
+      } else {
+        // Mode QR: tampilkan di terminal (untuk yang menjalankan langsung / via SSH)
+        console.log('Scan QR ini dengan WhatsApp (Perangkat tertaut):')
+        qrTerminal.generate(qr, { small: true })
+      }
       // Simpan juga sebagai gambar, agar bisa dikirim ke pemilik nomor untuk di-scan
-      QRCode.toFile('qr.png', qr, { width: 512, margin: 2 })
-        .then(() => console.log('QR baru tersimpan di qr.png — siap di-scan (Perangkat tertaut)'))
-        .catch((e) => console.error('Gagal membuat QR:', e.message))
+      QRCode.toFile('qr.png', qr, { width: 512, margin: 2 }).catch(() => {})
     }
-    if (connection === 'open') console.log('Bot terhubung ke WhatsApp.')
+    if (connection === 'open') {
+      pairingRequested = false
+      console.log('Bot terhubung ke WhatsApp.')
+    }
     if (connection === 'close') {
       const code = lastDisconnect?.error?.output?.statusCode
-      if (code !== DisconnectReason.loggedOut) {
-        console.log('Koneksi putus, menyambung ulang...')
-        start()
-      } else {
-        console.log('Bot logout. Hapus folder auth_info lalu jalankan ulang untuk scan QR lagi.')
+      const registered = !!sock.authState.creds.registered
+      if (code === DisconnectReason.loggedOut) {
+        if (registered) {
+          console.log('Bot logout. Hapus folder auth_info lalu jalankan ulang untuk login lagi.')
+        } else {
+          console.log('Pairing tidak selesai (kode salah, kedaluwarsa, atau dibatalkan dari HP).')
+          console.log('Hapus folder auth_info, jalankan ulang, lalu SEGERA masukkan kode barunya.')
+        }
+        return
       }
+      if (PHONE && !registered) {
+        // Jangan menyambung ulang diam-diam: kode yang sudah tercetak akan mati
+        // bersama sesinya, jadi lebih jujur berhenti dan minta dijalankan ulang.
+        console.log('Koneksi putus SEBELUM pairing selesai — kode tadi sudah tidak berlaku.')
+        console.log(`Jalankan ulang: node index.js ${PHONE} lalu segera masukkan kode barunya.`)
+        return
+      }
+      console.log('Koneksi putus, menyambung ulang...')
+      start()
     }
   })
 
